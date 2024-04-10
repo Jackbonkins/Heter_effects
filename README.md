@@ -3,8 +3,8 @@
   ### Covariates:
   -> large number of covariates relative to n \
   -> let covariates be correlated (generate covariate covariance matrix) \
-  -> interact them? (see Jacob (2021) \
-  -> All from a standard normal distribution? \
+  -> interact them? (see Jacob (2021)) \
+  -> All from a standard normal distribution?
   
   ### Treatment assignment:
   -> Exogeneous treatment assignment, bernoulli distributed \

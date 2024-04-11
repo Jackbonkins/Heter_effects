@@ -5,6 +5,10 @@
   -> let covariates be correlated (generate covariate covariance matrix) \
   -> interact them? (see Jacob (2021)) \
   -> All from a standard normal distribution?
+
+  Programming Issues: 
+  1) generating a positive-definite random covariance matrix for the covariates
+  2) 
   
   ### Treatment assignment:
   -> Exogeneous treatment assignment, bernoulli distributed

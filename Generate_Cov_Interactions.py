@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-from Generate_Covariates import gen_cov_matrix, gen_covariates
 
 
 #Define new function to interact covariates with each other and create Mu_0(x)

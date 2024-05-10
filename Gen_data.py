@@ -108,7 +108,7 @@ class SimulationStudy:
         poly_features = poly.fit_transform(df[columns])
 
         # Sum the polynomial features along axis 1
-        sum_poly_features = poly_features.sum(axis=1)
+        sum_poly_features = pd.DataFrame(np.sum(poly_features, axis=1), columns=['sum']) - 1
         
         # Add the new variable to DataFrame
         df['T'] = np.random.binomial(1, 0.5, len(df))

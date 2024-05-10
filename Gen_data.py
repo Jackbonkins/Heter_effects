@@ -4,9 +4,17 @@ from sklearn.preprocessing import PolynomialFeatures
 
 
 class SimulationStudy:
+
     '''
 
-    Class creates simulation study object with specified simulation parameters
+    SimulationStudy class creates simulation study object with specified parameters by performing the following steps:
+
+    1) Generate a p*p flexible positive-definite covariance matrix
+    2) Use the generated covariance matrix to draw p covariates from a multivariate normal distribution with n observations
+    3) Create Mu(x) function
+    4) Create CATE
+    5) Generate outcome variable y
+    6) Create final data set
 
 
     Attributes
@@ -17,20 +25,25 @@ class SimulationStudy:
         Average feature correlation on the data set
     n : int
         Observations in the data set    
+    degree: int
+        Sets the polynomial degree for the Polynomial Feature function 
+    
 
     '''
 
-    def __init__(self, p: int, mean_correlation: float, n: int):
+
+    def __init__(self, p: int, mean_correlation: float, n: int, degree: int):
         self.p = p
         self.mean_correlation = mean_correlation
         self.n = n
+        self.degree = degree
 
 
 
     def get_covariance_matrix(self) -> np.ndarray:
         ''' 
         
-        Get n*n covariance matrix 
+        Get p*p covariance matrix 
         
         '''
         mean = np.zeros(self.p)
@@ -60,6 +73,7 @@ class SimulationStudy:
 
 
     def get_dataframe(self, cov_matrix: np.ndarray, mean: np.ndarray) -> pd.DataFrame:
+
         rng = np.random.default_rng()
         multivariate_samples = rng.multivariate_normal(mean, cov_matrix, self.n)
         df = pd.DataFrame(multivariate_samples, columns=[f"X{i}" for i in range(self.p)])
@@ -99,3 +113,25 @@ class SimulationStudy:
         df['CATE'] = (sum_poly_features + np.random.normal(0, 1, self.n))*df['T']
 
         return df
+
+
+
+    def gen_outcome(self, df: pd.DataFrame) -> pd.DataFrame:
+
+        df['y'] = df['CATE'] + df['mu_x'] + np.random.normal(0, 1, self.n)
+        return df
+
+
+
+    def create_dataset(self):
+
+        cov_matrix, mean = self.get_covariance_matrix()
+        df = self.get_dataframe(cov_matrix=cov_matrix, mean=mean)
+        df_mu_x = self.gen_mu_x(df=df)
+        df_cate = self.gen_cate(df=df_mu_x, degree=self.degree)
+        final_df = self.gen_outcome(df_cate)
+
+        return final_df
+
+ 
+

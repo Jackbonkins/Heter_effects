@@ -76,8 +76,8 @@ class SimulationStudy:
 
         rng = np.random.default_rng()
         multivariate_samples = rng.multivariate_normal(mean, cov_matrix, self.n)
-        df = pd.DataFrame(multivariate_samples, columns=[f"X{i}" for i in range(self.p)])
-        return df
+        df_original = pd.DataFrame(multivariate_samples, columns=[f"X{i}" for i in range(self.p)])
+        return df_original
 
 
 
@@ -89,9 +89,11 @@ class SimulationStudy:
         poly = PolynomialFeatures(interaction_only=True)
 
         poly_features = poly.fit_transform(df[columns])
-        sum_poly_features = poly_features.sum(axis=1)
+        sum_poly_features = pd.DataFrame(np.sum(poly_features, axis=1), columns=['sum']) 
+        sum_features = pd.DataFrame(np.sum(df[columns].values, axis=1), columns=['sum'])
+        interaction_sum = sum_poly_features - sum_features - 1
 
-        df['mu_x'] = sum_poly_features + np.random.normal(0, 1, self.n)
+        df['mu_x'] =  interaction_sum
 
         return df
     
@@ -107,7 +109,7 @@ class SimulationStudy:
 
         # Sum the polynomial features along axis 1
         sum_poly_features = poly_features.sum(axis=1)
-
+        
         # Add the new variable to DataFrame
         df['T'] = np.random.binomial(1, 0.5, len(df))
         df['CATE'] = (sum_poly_features + np.random.normal(0, 1, self.n))*df['T']

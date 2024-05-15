@@ -43,7 +43,10 @@ class SimulationStudy:
     def get_covariance_matrix(self) -> np.ndarray:
         ''' 
         
-        Get p*p covariance matrix 
+        Get p*p covariance matrix. Takes parameter self and returns covariance and mean matrix.
+
+        If covariance matrix is not positive-definite, cholesky decomposition is not possible. In which case, LinAlgError occurs. While loop avoids error
+        due to random value choices by choosing a different set of numbers.
         
         '''
         mean = np.zeros(self.p)
@@ -57,11 +60,11 @@ class SimulationStudy:
                     cov_matrix[i, i] = variance_diagonal[i]
 
                     for j in range(i+1, self.p):
-                        correlation = np.clip(np.random.normal(self.mean_correlation, 0.01), -1, 1)
+                        correlation = np.clip(np.random.normal(self.mean_correlation, 0.01), -1, 1) 
                         #print(f"Correlation: {correlation}")
-                        cov_matrix[i, j] = cov_matrix[j, i] = correlation *  np.sqrt(variance_diagonal[i] * variance_diagonal[j])
+                        cov_matrix[i, j] = cov_matrix[j, i] = correlation *  np.sqrt(variance_diagonal[i] * variance_diagonal[j]) 
 
-                pos_def_test = np.linalg.cholesky(cov_matrix)    
+                pos_def_test = np.linalg.cholesky(cov_matrix) #Test covariance matrix for symmetry and positive-definiteness
 
             except np.linalg.LinAlgError:
                 continue
@@ -72,8 +75,14 @@ class SimulationStudy:
        
 
 
-    def get_dataframe(self, cov_matrix: np.ndarray, mean: np.ndarray) -> pd.DataFrame:
+    def get_features(self, cov_matrix: np.ndarray, mean: np.ndarray) -> pd.DataFrame:
 
+        '''
+        Uses self parameter, the covariance matrix, and the mean matrix to draw p features from a multivariate normal distribution with n observations. 
+
+        Method returns a pandas dataframe.
+       
+        '''
         rng = np.random.default_rng()
         multivariate_samples = rng.multivariate_normal(mean, cov_matrix, self.n)
         df_original = pd.DataFrame(multivariate_samples, columns=[f"X{i}" for i in range(self.p)])
@@ -91,7 +100,7 @@ class SimulationStudy:
         poly_features = poly.fit_transform(df[columns])
         sum_poly_features = pd.DataFrame(np.sum(poly_features, axis=1), columns=['sum']) 
         sum_features = pd.DataFrame(np.sum(df[columns].values, axis=1), columns=['sum'])
-        interaction_sum = sum_poly_features - sum_features - 1
+        interaction_sum = sum_poly_features - 1 - sum_features
 
         df['mu_x'] =  interaction_sum
 
@@ -105,19 +114,37 @@ class SimulationStudy:
 
         columns = [f"X{i}" for i in range(feat_no)]
         poly = PolynomialFeatures(degree)
+        interactions = PolynomialFeatures(interaction_only=True)
+
         poly_features = poly.fit_transform(df[columns])
+        interaction_features = interactions.fit_transform(df[columns])
 
         # Sum the polynomial features along axis 1
-        sum_poly_features = pd.DataFrame(np.sum(poly_features, axis=1), columns=['sum']) - 1
+        sum_features = pd.DataFrame(np.sum(df[columns].values, axis=1), columns=['sum'])
+        sum_inter_features = pd.DataFrame(np.sum(interaction_features, axis=1), columns=['sum']) - 1
+        sum_poly_features = pd.DataFrame(np.sum(poly_features, axis=1), columns=['sum']) - sum_inter_features - sum_features - 1
+
+        '''
+        To do: Random feature weights 
+        
+        values between 0 and 1 (Normally distributed? Uniformly distributed?)
+
+
+        '''
+
         
         # Add the new variable to DataFrame
         df['T'] = np.random.binomial(1, 0.5, len(df))
-        df['CATE'] = (sum_poly_features + np.random.normal(0, 1, self.n))*df['T']
+        df['CATE'] = (sum_poly_features['sum'] + np.random.normal(0, 1, self.n))*df['T']
 
         return df
 
+    #def gen_random_feat_weight(self, df: pd.DataFrame) -> pd.DataFrame:
+     #   df_columns = df.columns
+       # weights = (np.random.randint(0, 100, ))/100
 
-
+       
+        
     def gen_outcome(self, df: pd.DataFrame) -> pd.DataFrame:
 
         df['y'] = df['CATE'] + df['mu_x'] + np.random.normal(0, 1, self.n)
@@ -128,7 +155,7 @@ class SimulationStudy:
     def create_dataset(self):
 
         cov_matrix, mean = self.get_covariance_matrix()
-        df = self.get_dataframe(cov_matrix=cov_matrix, mean=mean)
+        df = self.get_features(cov_matrix=cov_matrix, mean=mean)
         df_mu_x = self.gen_mu_x(df=df)
         df_cate = self.gen_cate(df=df_mu_x, degree=self.degree)
         final_df = self.gen_outcome(df_cate)

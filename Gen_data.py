@@ -25,18 +25,18 @@ class SimulationStudy:
         Average feature correlation on the data set
     n : int
         Observations in the data set    
-    degree: int
+    poly_degree: int
         Sets the polynomial degree for the Polynomial Feature function 
     
 
     '''
 
 
-    def __init__(self, p: int, mean_correlation: float, n: int, degree: int):
+    def __init__(self, p: int, mean_correlation: float, n: int, poly_degree: int):
         self.p = p
         self.mean_correlation = mean_correlation
         self.n = n
-        self.degree = degree
+        self.poly_degree = poly_degree
 
 
 
@@ -98,9 +98,7 @@ class SimulationStudy:
         poly = PolynomialFeatures(interaction_only=True)
 
         poly_features = poly.fit_transform(df[columns])
-        sum_poly_features = pd.DataFrame(np.sum(poly_features, axis=1), columns=['sum']) 
-        sum_features = pd.DataFrame(np.sum(df[columns].values, axis=1), columns=['sum'])
-        interaction_sum = sum_poly_features - 1 - sum_features
+        interaction_sum = pd.DataFrame(np.sum(poly_features, axis=1) - np.sum(df[columns].values, axis=1), columns=['sum'])
 
         df['mu_x'] =  interaction_sum
 
@@ -108,21 +106,21 @@ class SimulationStudy:
     
 
 
-    def gen_cate(self, degree: int, df: pd.DataFrame) -> pd.DataFrame: 
+    def gen_cate(self, poly_degree: int, df: pd.DataFrame, geom: bool = False) -> pd.DataFrame: 
     
         feat_no = int(self.p/2)
-
         columns = [f"X{i}" for i in range(feat_no)]
-        poly = PolynomialFeatures(degree)
-        interactions = PolynomialFeatures(interaction_only=True)
+
+
+
+        poly = PolynomialFeatures(poly_degree, include_bias=False)
+        interactions = PolynomialFeatures(interaction_only=True, include_bias=False)
 
         poly_features = poly.fit_transform(df[columns])
         interaction_features = interactions.fit_transform(df[columns])
 
-        # Sum the polynomial features along axis 1
-        sum_features = pd.DataFrame(np.sum(df[columns].values, axis=1), columns=['sum'])
-        sum_inter_features = pd.DataFrame(np.sum(interaction_features, axis=1), columns=['sum']) - 1
-        sum_poly_features = pd.DataFrame(np.sum(poly_features, axis=1), columns=['sum']) - sum_inter_features - sum_features - 1
+        # Sum polynomial features and subtract redundant values      
+        sum_poly_features = pd.DataFrame(np.sum(poly_features, axis=1) - np.sum(df[columns].values, axis=1) - np.sum(df[columns].values, axis=1), columns=['sum'])
 
         '''
         To do: Random feature weights 
@@ -132,6 +130,8 @@ class SimulationStudy:
 
         '''
 
+        #if geom == True:
+            
         
         # Add the new variable to DataFrame
         df['T'] = np.random.binomial(1, 0.5, len(df))
@@ -143,7 +143,7 @@ class SimulationStudy:
      #   df_columns = df.columns
        # weights = (np.random.randint(0, 100, ))/100
 
-       
+
         
     def gen_outcome(self, df: pd.DataFrame) -> pd.DataFrame:
 
@@ -157,10 +157,12 @@ class SimulationStudy:
         cov_matrix, mean = self.get_covariance_matrix()
         df = self.get_features(cov_matrix=cov_matrix, mean=mean)
         df_mu_x = self.gen_mu_x(df=df)
-        df_cate = self.gen_cate(df=df_mu_x, degree=self.degree)
+        df_cate = self.gen_cate(df=df_mu_x, poly_degree=self.poly_degree)
         final_df = self.gen_outcome(df_cate)
 
         return final_df
 
  
 
+#sim_1: SimulationStudy = SimulationStudy(p=200, mean_correlation=0.8, n=2000, poly_degree=2)
+#simulation_1 = sim_1.create_dataset()

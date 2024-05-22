@@ -120,8 +120,8 @@ class SimulationStudy:
         columns = [f"X{i}" for i in range(feat_no)]
         poly = PolynomialFeatures(interaction_only=True)
 
-        poly_features = poly.fit_transform(df[columns])
-        interaction_sum = np.sum(poly_features, axis=1) - np.sum(df[columns].values, axis=1)
+        poly_features = poly.fit_transform(df[columns].to_numpy())
+        interaction_sum = np.sum(poly_features, axis=1) - np.sum(df[columns].to_numpy(), axis=1)
 
         df['mu_x'] =  interaction_sum
 
@@ -141,7 +141,7 @@ class SimulationStudy:
             #mult_col_weight = np.outer(weights, df[columns])
             #sum_weighted = np.sum(mult_col_weight)
             #cate_sin = np.sin(sum_weighted)
-            feature_sum = np.sum(df[columns], axis=1)
+            feature_sum = np.sum(df[columns].to_numpy(), axis=1)
             cate_sin = np.sin(feature_sum)
             df['CATE'] = cate_sin #+ np.random.normal(0, 1, self.n)
 
@@ -149,11 +149,11 @@ class SimulationStudy:
             poly = PolynomialFeatures(poly_degree, include_bias=False)
             interactions = PolynomialFeatures(interaction_only=True, include_bias=False)
 
-            poly_features = poly.fit_transform(df[columns])
-            interaction_features = interactions.fit_transform(df[columns])
+            poly_features = poly.fit_transform(df[columns].to_numpy())
+            interaction_features = interactions.fit_transform(df[columns].to_numpy())
 
             # Sum polynomial features and subtract redundant values      
-            sum_poly_features = np.sum(poly_features, axis=1) - np.sum(interaction_features, axis=1) - np.sum(df[columns].values, axis=1)
+            sum_poly_features = np.sum(poly_features, axis=1) - np.sum(interaction_features, axis=1) - np.sum(df[columns].to_numpy(), axis=1)
 
             df['CATE'] = (sum_poly_features + np.random.normal(0, 1, self.n))
 
@@ -185,7 +185,3 @@ class SimulationStudy:
         return final_df
 
  
-
-#sim_1: SimulationStudy = SimulationStudy(p=200, mean_correlation=0.8, cor_variance=0.01, n=2000, poly_degree=2)
-#simulation_1 = sim_1.create_dataset()
-

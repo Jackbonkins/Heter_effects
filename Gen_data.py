@@ -1,7 +1,8 @@
 import pandas as pd
 import numpy as np
+import scipy.stats as ss
 from sklearn.preprocessing import PolynomialFeatures 
-
+import math
 
 class SimulationStudy:
 
@@ -37,6 +38,7 @@ class SimulationStudy:
     Returns
     -------
     SimulationStudy object
+
     '''
 
 
@@ -47,7 +49,6 @@ class SimulationStudy:
         self.mean_correlation = mean_correlation
         self.cor_variance = cor_variance
         self.n = n
-        self.include_cat_var = include_cat_var
         self.poly_degree = poly_degree
         self.geom = geom
 
@@ -73,9 +74,13 @@ class SimulationStudy:
                 cov_matrix[i, i] = variance_diagonal[i]
 
                 for j in range(i+1, self.p):
-                    correlation = np.clip(np.random.normal(self.mean_correlation, self.cor_variance), -0.8, 0.8) 
-                    cov_matrix[i, j] = cov_matrix[j, i] = correlation *  np.sqrt(variance_diagonal[i] * variance_diagonal[j]) 
-            
+
+                    #corr_value = ss.pearson3.rvs(loc = self.mean_correlation, scale = self.cor_variance, skew = -1, size = 1)
+                    #correlation = np.clip(corr_value[0], -0.95, 0.95)
+
+                    correlation = np.clip(np.random.normal(self.mean_correlation, self.cor_variance), -0.95, 0.95) 
+                    cov_matrix[i, j] = cov_matrix[j, i] = correlation *  np.sqrt(variance_diagonal[i] * variance_diagonal[j])
+                            
             #Test covariance matrix for symmetry and positive-definiteness
             pos_def_test = np.linalg.cholesky(cov_matrix) 
 
@@ -96,16 +101,8 @@ class SimulationStudy:
        
         '''
         rng = np.random.default_rng()
-        multivariate_samples = rng.multivariate_normal(mean, cov_matrix, self.n)
-
-        if self.include_cat_var is True:
-            #cat_var = np.random.randint(1, 5, size=self.n)
-            #df_original = pd.DataFrame(cat_var, columns=[f"X{i}" for i in range(int((self.p)/2))])
-            #df_original = pd.DataFrame(multivariate_samples, columns=[f"X{i}" for i in range(int((self.p)/2), (self.p))])
-            #df_original = df_original[np.random.permutation(df_original.columns)]
-            pass
-        else:
-            df_original = pd.DataFrame(multivariate_samples, columns=[f"X{i}" for i in range(self.p)])
+        multivariate_samples = rng.multivariate_normal(mean, cov_matrix, self.n, tol=1e-6)
+        df_original = pd.DataFrame(multivariate_samples, columns=[f"X{i}" for i in range(self.p)])
             
         return df_original
 
@@ -133,17 +130,24 @@ class SimulationStudy:
     def gen_cate(self, poly_degree: int, df: pd.DataFrame, geom: bool = False) -> pd.DataFrame: 
 
         #Choose number of features that will be used for the CATE function    
-        feat_no = int(self.p/2)
+        feat_no = math.ceil(self.p/2)
         columns = [f"X{i}" for i in range(feat_no)]
 
         if geom==True:
-            #weights = (np.random.randint(0, 100, size=(feat_no)))/100
-            #mult_col_weight = np.outer(weights, df[columns])
-            #sum_weighted = np.sum(mult_col_weight)
-            #cate_sin = np.sin(sum_weighted)
-            feature_sum = np.sum(df[columns].to_numpy(), axis=1)
-            cate_sin = np.sin(feature_sum)
-            df['CATE'] = cate_sin #+ np.random.normal(0, 1, self.n)
+            
+            middle = math.ceil(len(columns)/2)
+            first_half = columns[:middle]
+            second_half = columns[middle:]
+            
+            #weights = (np.random.randint(0, 4, size=(len(first_half))))
+            #weighted_feat = np.outer(weights, df[first_half].to_numpy())
+
+
+            feature_sum = np.sum(df[second_half].to_numpy(), axis=1)
+            #weighted_feat_sum = np.sum(weighted_feat, axis=1)
+            #cate_sin = np.sin(weighted_feat_sum)
+            cate_sin = np.sin(np.sum(df[first_half].to_numpy(), axis=1))
+            df['CATE'] = 2*cate_sin + feature_sum
 
         else:
             poly = PolynomialFeatures(poly_degree, include_bias=False)
@@ -155,7 +159,7 @@ class SimulationStudy:
             # Sum polynomial features and subtract redundant values      
             sum_poly_features = np.sum(poly_features, axis=1) - np.sum(interaction_features, axis=1) - np.sum(df[columns].to_numpy(), axis=1)
 
-            df['CATE'] = (sum_poly_features + np.random.normal(0, 1, self.n))
+            df['CATE'] = sum_poly_features + np.random.normal(0, 1, self.n)
 
         return df
 

@@ -3,6 +3,7 @@ import numpy as np
 import scipy.stats as ss
 from sklearn.preprocessing import PolynomialFeatures 
 import math
+import warnings
 
 class SimulationStudy:
 
@@ -28,8 +29,6 @@ class SimulationStudy:
         Adjusts the variance of the correlation distribution from which the correlation values are drawn
     n: int
         Observations in the data set
-    include_cat_var:
-        Generates categorical features for half of the total number of features. Default is false.
     poly_degree: int
         Sets the polynomial degree for the Polynomial Feature function. Default is 2.
     geom: bool
@@ -85,7 +84,7 @@ class SimulationStudy:
             pos_def_test = np.linalg.cholesky(cov_matrix) 
 
         except np.linalg.LinAlgError:
-            print('Correlation structure has to be adjusted')
+            pass
 
         return cov_matrix, mean
         
@@ -100,8 +99,10 @@ class SimulationStudy:
         Method returns a pandas dataframe.
        
         '''
+        warnings.filterwarnings("ignore", category=RuntimeWarning) 
         rng = np.random.default_rng()
         multivariate_samples = rng.multivariate_normal(mean, cov_matrix, self.n, tol=1e-6)
+
         df_original = pd.DataFrame(multivariate_samples, columns=[f"X{i}" for i in range(self.p)])
             
         return df_original
@@ -130,7 +131,7 @@ class SimulationStudy:
     def gen_cate(self, poly_degree: int, df: pd.DataFrame, geom: bool = False) -> pd.DataFrame: 
 
         #Choose number of features that will be used for the CATE function    
-        feat_no = math.ceil(self.p/2)
+        feat_no = math.ceil(self.p/3)
         columns = [f"X{i}" for i in range(feat_no)]
 
         if geom==True:
@@ -147,7 +148,7 @@ class SimulationStudy:
             #weighted_feat_sum = np.sum(weighted_feat, axis=1)
             #cate_sin = np.sin(weighted_feat_sum)
             cate_sin = np.sin(np.sum(df[first_half].to_numpy(), axis=1))
-            df['CATE'] = 2*cate_sin + feature_sum
+            df['CATE'] = cate_sin + feature_sum
 
         else:
             poly = PolynomialFeatures(poly_degree, include_bias=False)

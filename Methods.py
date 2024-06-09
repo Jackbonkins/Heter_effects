@@ -10,7 +10,6 @@ from sklearn.metrics import mean_squared_error
 
 
 
-
 class EstimationMethods:
 
 
@@ -43,7 +42,6 @@ class EstimationMethods:
 
         X_train_ols = self.X_train.join(interactions_train)
         X_test_ols = self.X_test.join([interactions_test, pd.DataFrame(self.T_test, columns=['T'])])
-
 
         #Create OLS object
         ols = LinearRegression()

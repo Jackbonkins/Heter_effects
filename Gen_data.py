@@ -29,10 +29,11 @@ class SimulationStudy:
         Adjusts the variance of the correlation distribution from which the correlation values are drawn
     n: int
         Observations in the data set
-    poly_degree: int
-        Sets the polynomial degree for the Polynomial Feature function. Default is 2.
-    geom: bool
-        Default is false. If true, CATE is computed as a sinus function.
+    no_feat_cate: int
+        Defines the number of features that define the CATE function
+    non_linear: bool
+        Determines whether the CATE function is non-linear. If true, CATE is the sum of sinusoid functions and a linear component. Default is that the CATE is linear.
+    
     
     Returns
     -------
@@ -43,13 +44,17 @@ class SimulationStudy:
 
 
 
-    def __init__(self, p: int, mean_correlation: float, cor_variance: float, n: int, include_cat_var: bool = False, poly_degree: int = 2, geom: bool = False) -> pd.DataFrame:
+    #def __init__(self, p: int, mean_correlation: float, cor_variance: float, n: int, geom: bool = False) -> pd.DataFrame:
+    def __init__(self, p: int, mean_correlation: float, cor_variance: float, 
+                 n: int, no_feat_cate: int, non_linear: bool = False) -> pd.DataFrame:
+        
         self.p = p
         self.mean_correlation = mean_correlation
         self.cor_variance = cor_variance
         self.n = n
-        self.poly_degree = poly_degree
-        self.geom = geom
+        self.no_feat_cate = no_feat_cate
+        #self.poly_degree = poly_degree
+        self.non_linear = non_linear
 
 
 
@@ -64,7 +69,7 @@ class SimulationStudy:
         
         '''
         mean = np.zeros(self.p)
-        variance_diagonal = np.ones(self.p) # in principle, n could be n draws from some meta-distribution
+        variance_diagonal = np.ones(self.p) 
         cov_matrix = np.zeros((self.p, self.p))
 
         # assign variance to diagonal
@@ -128,41 +133,80 @@ class SimulationStudy:
 
 
 
-    def gen_cate(self, poly_degree: int, df: pd.DataFrame, geom: bool = False) -> pd.DataFrame: 
+    def gen_cate(self, df: pd.DataFrame, non_linear=False) -> pd.DataFrame:
+        columns = [f"X{i}" for i in range(self.no_feat_cate)]
+
+        feat_cate = df[columns]
+        weights = np.random.choice(range(1, self.no_feat_cate + 1), size=self.no_feat_cate, replace=False)
+        print(weights)
+        weighted_feat = feat_cate*weights
+
+        if non_linear == True:
+
+            if self.no_feat_cate == 1:
+                non_lin_cate = np.sin(feat_cate.to_numpy())
+                
+
+            elif self.no_feat_cate > 1:
+                
+                feature_sin = weighted_feat.iloc[:, :-1].to_numpy()
+                feature_sin = np.sum(np.sin(feature_sin), axis=1).reshape(-1,1)
+                feature_lin = feat_cate.iloc[:, -1:].to_numpy()
+                non_lin_cate = feature_sin + feature_lin
+
+            else:
+                raise Exception('Cate features cannot be 0 or negative')
+            
+            df['CATE'] = non_lin_cate
+
+        else:
+            lin_cate = np.sum(weighted_feat.to_numpy(), axis=1)
+            df['CATE'] = lin_cate + np.random.normal(0, 1, self.n)
+
+        
+        return df
+
+
+    #def gen_cate(self, df: pd.DataFrame, geom: bool = False) -> pd.DataFrame: 
 
         #Choose number of features that will be used for the CATE function    
-        feat_no = math.ceil(self.p/3)
-        columns = [f"X{i}" for i in range(feat_no)]
+     #   feat_no = math.ceil(self.p/3)
+      #  columns = [f"X{i}" for i in range(feat_no)]
 
-        if geom==True:
+       # if geom==True:
             
-            middle = math.ceil(len(columns)/2)
-            first_half = columns[:middle]
-            second_half = columns[middle:]
+        #    middle = math.ceil(len(columns)/2)
+         #   first_half = columns[:middle]
+          #  second_half = columns[middle:]
             
             #weights = (np.random.randint(0, 4, size=(len(first_half))))
             #weighted_feat = np.outer(weights, df[first_half].to_numpy())
 
 
-            feature_sum = np.sum(df[second_half].to_numpy(), axis=1)
+           # feature_sum = np.sum(df[second_half].to_numpy(), axis=1)
             #weighted_feat_sum = np.sum(weighted_feat, axis=1)
             #cate_sin = np.sin(weighted_feat_sum)
-            cate_sin = np.sin(np.sum(df[first_half].to_numpy(), axis=1))
-            df['CATE'] = cate_sin + feature_sum
+            #cate_sin = np.sin(np.sum(df[first_half].to_numpy(), axis=1))
+            #df['CATE'] = cate_sin + feature_sum
 
-        else:
-            poly = PolynomialFeatures(poly_degree, include_bias=False)
-            interactions = PolynomialFeatures(interaction_only=True, include_bias=False)
+        #else:
+            #poly = PolynomialFeatures(poly_degree, include_bias=False)
+            #interactions = PolynomialFeatures(interaction_only=True, include_bias=False)
 
-            poly_features = poly.fit_transform(df[columns].to_numpy())
-            interaction_features = interactions.fit_transform(df[columns].to_numpy())
+            #poly_features = poly.fit_transform(df[columns].to_numpy())
+            #interaction_features = interactions.fit_transform(df[columns].to_numpy())
 
             # Sum polynomial features and subtract redundant values      
-            sum_poly_features = np.sum(poly_features, axis=1) - np.sum(interaction_features, axis=1) - np.sum(df[columns].to_numpy(), axis=1)
+            #sum_poly_features = np.sum(poly_features, axis=1) - np.sum(interaction_features, axis=1) - np.sum(df[columns].to_numpy(), axis=1)
 
-            df['CATE'] = sum_poly_features + np.random.normal(0, 1, self.n)
+            #df['CATE'] = sum_poly_features + np.random.normal(0, 1, self.n)
 
-        return df
+        #else:
+         #   pass
+            #df['CATE'] = 
+            
+
+        #return df
 
 
 
@@ -184,7 +228,7 @@ class SimulationStudy:
         cov_matrix, mean = self.get_covariance_matrix()
         df = self.get_features(cov_matrix=cov_matrix, mean=mean)
         df_mu_x = self.gen_mu_x(df=df)
-        df_cate = self.gen_cate(df=df_mu_x, poly_degree=self.poly_degree, geom=self.geom)
+        df_cate = self.gen_cate(df=df_mu_x, non_linear=self.non_linear)
         final_df = self.gen_model(df_cate)
 
         return final_df

@@ -137,8 +137,8 @@ class SimulationStudy:
         columns = [f"X{i}" for i in range(self.no_feat_cate)]
 
         feat_cate = df[columns]
+        np.random.seed(42) #Set seed to make sure that the weights are reproducible for consistent results
         weights = np.random.choice(range(1, self.no_feat_cate + 1), size=self.no_feat_cate, replace=False)
-        print(weights)
         weighted_feat = feat_cate*weights
 
         if non_linear == True:

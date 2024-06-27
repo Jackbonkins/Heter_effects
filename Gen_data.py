@@ -31,8 +31,10 @@ class SimulationStudy:
         Observations in the data set
     no_feat_cate: int
         Defines the number of features that define the CATE function
-    non_linear: bool
-        Determines whether the CATE function is non-linear. If true, CATE is the sum of sinusoid functions and a linear component. Default is that the CATE is linear.
+    non_linear: None
+        Determines whether the CATE function is non-linear. If 'quadratic' is inputed, then the CATE is the sum of the square of features. 
+        If 'complex' is inputed, then a CATE function with non-linear interaction and squared features is generated. Default is a linear CATE.
+
     
     
     Returns
@@ -46,14 +48,13 @@ class SimulationStudy:
 
     #def __init__(self, p: int, mean_correlation: float, cor_variance: float, n: int, geom: bool = False) -> pd.DataFrame:
     def __init__(self, p: int, mean_correlation: float, cor_variance: float, 
-                 n: int, no_feat_cate: int, non_linear: bool = False) -> pd.DataFrame:
+                 n: int, no_feat_cate: int, non_linear=None) -> pd.DataFrame:
         
         self.p = p
         self.mean_correlation = mean_correlation
         self.cor_variance = cor_variance
         self.n = n
         self.no_feat_cate = no_feat_cate
-        #self.poly_degree = poly_degree
         self.non_linear = non_linear
 
 
@@ -79,10 +80,17 @@ class SimulationStudy:
 
                 for j in range(i+1, self.p):
 
-                    #corr_value = ss.pearson3.rvs(loc = self.mean_correlation, scale = self.cor_variance, skew = -1, size = 1)
-                    #correlation = np.clip(corr_value[0], -0.95, 0.95)
+                    correlation = np.clip(np.random.normal(self.mean_correlation, self.cor_variance), -0.95, 0.95)
 
-                    correlation = np.clip(np.random.normal(self.mean_correlation, self.cor_variance), -0.95, 0.95) 
+                    while True: 
+                        if math.isclose(correlation, 0.95, rel_tol=1e-8) or math.isclose(correlation, -0.95, rel_tol=1e-8):
+                            correlation = np.clip(np.random.normal(self.mean_correlation, self.cor_variance), -0.95, 0.95)
+                            #print(correlation)
+                            continue
+                        else:          
+                            break
+                    
+
                     cov_matrix[i, j] = cov_matrix[j, i] = correlation *  np.sqrt(variance_diagonal[i] * variance_diagonal[j])
                             
             #Test covariance matrix for symmetry and positive-definiteness
@@ -118,11 +126,10 @@ class SimulationStudy:
 
     def gen_mu_x(self, df: pd.DataFrame) -> pd.DataFrame:
 
-        feat_no = int(self.p/2)
-
+        feat_no = self.no_feat_cate
         columns = [f"X{i}" for i in range(feat_no)]
+        
         poly = PolynomialFeatures(interaction_only=True)
-
         poly_features = poly.fit_transform(df[columns].to_numpy())
         interaction_sum = np.sum(poly_features, axis=1) - np.sum(df[columns].to_numpy(), axis=1)
 
@@ -133,35 +140,33 @@ class SimulationStudy:
 
 
 
-    def gen_cate(self, df: pd.DataFrame, non_linear=False) -> pd.DataFrame:
+    def gen_cate(self, df: pd.DataFrame, non_linear=None) -> pd.DataFrame:
         columns = [f"X{i}" for i in range(self.no_feat_cate)]
 
         feat_cate = df[columns]
         np.random.seed(42) #Set seed to make sure that the weights are reproducible for consistent results
         weights = np.random.choice(range(1, self.no_feat_cate + 1), size=self.no_feat_cate, replace=False)
-        weighted_feat = feat_cate*weights
+        #weighted_feat = feat_cate*weights
 
-        if non_linear == True:
 
-            if self.no_feat_cate == 1:
-                non_lin_cate = np.sin(feat_cate.to_numpy())
-                
+        if non_linear == 'quadratic':
+            sq_feat = np.square(feat_cate.to_numpy())
+            quad_sum = np.sum(sq_feat*weights, axis=1).reshape(-1,1)
+            df['CATE'] = quad_sum
 
-            elif self.no_feat_cate > 1:
-                
-                feature_sin = weighted_feat.iloc[:, :-1].to_numpy()
-                feature_sin = np.sum(np.sin(feature_sin), axis=1).reshape(-1,1)
-                feature_lin = feat_cate.iloc[:, -1:].to_numpy()
-                non_lin_cate = feature_sin + feature_lin
-
-            else:
-                raise Exception('Cate features cannot be 0 or negative')
+        elif non_linear == 'complex':
+            weighted_feat = feat_cate*weights
+            feat_sin = np.sin(weighted_feat.iloc[:, :1].to_numpy())
+            weighted_feat_sum = np.sum(feat_sin, axis=1).reshape(-1,1)
             
-            df['CATE'] = non_lin_cate
+            sq_feat = np.square(feat_cate.iloc[:, 2:].to_numpy())
+            quad_sum = np.sum(sq_feat*weights[2:], axis=1).reshape(-1,1)
+            df['CATE'] = weighted_feat_sum + quad_sum
 
         else:
-            lin_cate = np.sum(weighted_feat.to_numpy(), axis=1)
-            df['CATE'] = lin_cate + np.random.normal(0, 1, self.n)
+            #print('linear')
+            lin_cate = np.sum(feat_cate.to_numpy()*weights, axis=1)
+            df['CATE'] = lin_cate
 
         
         return df
@@ -211,7 +216,7 @@ class SimulationStudy:
 
 
 
-    def gen_model(self, df: pd.DataFrame) -> pd.DataFrame:
+    def gen_semi_par_model(self, df: pd.DataFrame) -> pd.DataFrame:
         
         #Generate treatment assignment
         df['T'] = np.random.binomial(1, 0.5, len(df)).astype(int)
@@ -223,13 +228,24 @@ class SimulationStudy:
 
 
 
+    def gen_non_par_model(self, df: pd.DataFrame) -> pd.DataFrame:
+                #Generate treatment assignment
+        df['T'] = np.random.binomial(1, 0.5, len(df)).astype(int)
+      
+        #Generate outcome y
+        df['y'] = df['CATE']*df['T'] + np.random.normal(0, 1, self.n)
+        return df
+
+
+
+
     def create_dataset(self):
 
         cov_matrix, mean = self.get_covariance_matrix()
         df = self.get_features(cov_matrix=cov_matrix, mean=mean)
         df_mu_x = self.gen_mu_x(df=df)
         df_cate = self.gen_cate(df=df_mu_x, non_linear=self.non_linear)
-        final_df = self.gen_model(df_cate)
+        final_df = self.gen_semi_par_model(df_cate)
 
         return final_df
 

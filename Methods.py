@@ -2,11 +2,12 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
-from econml.metalearners import TLearner
-from econml.dml import CausalForestDML, NonParamDML
+from econml.metalearners import TLearner, XLearner
+from econml.grf import CausalForest
+from econml.dml import CausalForestDML
 from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error 
+from sklearn.metrics import root_mean_squared_error
 
 
 
@@ -91,12 +92,12 @@ class EstimationMethods:
         #Calculate MSE train set
         true_cate_train= self.true_cate_train[self.true_cate_train['T'] == 1]
         true_cate_train = true_cate_train['CATE'] 
-        OLS_MSE_train = mean_squared_error(true_cate_train, estimated_cate_ols_train)
+        OLS_MSE_train = root_mean_squared_error(true_cate_train, estimated_cate_ols_train)
 
         #Calculate MSE test set
         true_cate_test = self.true_cate_test[self.true_cate_test['T'] == 1]
         true_cate_test = true_cate_test['CATE']      
-        OLS_MSE_test = mean_squared_error(true_cate_test, estimated_cate_ols_test)
+        OLS_MSE_test = root_mean_squared_error(true_cate_test, estimated_cate_ols_test)
 
         return estimated_cate_ols_train, estimated_cate_ols_test, OLS_MSE_train, OLS_MSE_test
     
@@ -118,8 +119,8 @@ class EstimationMethods:
         estimated_cate_t_train = est_t.effect(X_train)
         estimated_cate_t_test = est_t.effect(X_test)
 
-        T_MSE_train = mean_squared_error(true_cate_train, estimated_cate_t_train)
-        T_MSE_test = mean_squared_error(true_cate_test, estimated_cate_t_test)
+        T_MSE_train = root_mean_squared_error(true_cate_train, estimated_cate_t_train)
+        T_MSE_test = root_mean_squared_error(true_cate_test, estimated_cate_t_test)
         
 
         return estimated_cate_t_train, estimated_cate_t_test, T_MSE_test, T_MSE_train
@@ -151,15 +152,15 @@ class EstimationMethods:
         estimated_cate_cfdml_train = est_cfdml.effect(X_train)
         estimated_cate_cfdml_test = est_cfdml.effect(X_test)
 
-        CF_DML_MSE_train = mean_squared_error(true_cate_train, estimated_cate_cfdml_train)
-        CF_DML_MSE_test = mean_squared_error(true_cate_test, estimated_cate_cfdml_test)
+        CF_DML_MSE_train = root_mean_squared_error(true_cate_train, estimated_cate_cfdml_train)
+        CF_DML_MSE_test = root_mean_squared_error(true_cate_test, estimated_cate_cfdml_test)
 
         return estimated_cate_cfdml_train, estimated_cate_cfdml_test, CF_DML_MSE_train, CF_DML_MSE_test  
 
 
 
 
-    def non_param_dml(self) -> tuple[np.ndarray, float]:
+    def XLearner_estimator(self) -> tuple[np.ndarray, float]:
 
         Y_train = self.Y_train.to_numpy()
         T_train = self.T_train.to_numpy()
@@ -168,22 +169,41 @@ class EstimationMethods:
         true_cate_train = self.true_cate_train['CATE'].to_numpy()
         true_cate_test = self.true_cate_test['CATE'].to_numpy()
 
-        est_npm = NonParamDML(
-            model_y='auto',
-            model_t=DummyClassifier(),
-            model_final=RandomForestRegressor(),
-            cv = 5,
-            random_state = 42,
-            discrete_treatment=True,
-        )
+        est_xlearner = XLearner(models=RandomForestRegressor(),
+                    propensity_model=DummyClassifier())
         
-        est_npm.fit(Y=Y_train, T=T_train, X=X_train, W=None, cache_values=True)
+        est_xlearner.fit(Y=Y_train, T=T_train, X=X_train)
 
-        estimated_cate_npm_train = est_npm.effect(X_train)
-        estimated_cate_npm_test = est_npm.effect(X_test)
+        estimated_cate_x_train = est_xlearner.effect(X_train)
+        estimated_cate_x_test = est_xlearner.effect(X_test)
 
-        NPM_MSE_Train = mean_squared_error(true_cate_train, estimated_cate_npm_train)
-        NPM_MSE_Test = mean_squared_error(true_cate_test, estimated_cate_npm_test)
+        X_MSE_train = root_mean_squared_error(true_cate_test, estimated_cate_x_train)
+        X_MSE_test = root_mean_squared_error(true_cate_train, estimated_cate_x_test)
 
-        return estimated_cate_npm_train, estimated_cate_npm_test, NPM_MSE_Train, NPM_MSE_Test
+        return estimated_cate_x_train, estimated_cate_x_test, X_MSE_test, X_MSE_train
+
+
+
+
+
+    def GRF_estimator(self) -> tuple[np.ndarray, float]:
+
+        Y_train = self.Y_train.to_numpy()
+        T_train = self.T_train.to_numpy()
+        X_train = self.X_train.to_numpy()
+        X_test = self.X_test.to_numpy()
+        true_cate_train = self.true_cate_train['CATE'].to_numpy()
+        true_cate_test = self.true_cate_test['CATE'].to_numpy()
+
+        est_grf = CausalForest(random_state=42, n_estimators=1000)
+        
+        est_grf.fit(y=Y_train, T=T_train, X=X_train)
+
+        estimated_cate_grf_train = est_grf.predict(X_train)
+        estimated_cate_grf_test = est_grf.predict(X_test)
+
+        GRF_MSE_train = root_mean_squared_error(true_cate_test, estimated_cate_grf_train)
+        GRF_MSE_test = root_mean_squared_error(true_cate_train, estimated_cate_grf_test)
+
+        return estimated_cate_grf_train, estimated_cate_grf_test, GRF_MSE_train, GRF_MSE_test
 

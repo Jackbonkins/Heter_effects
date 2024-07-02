@@ -85,26 +85,3 @@ def mse_analysis(p: int, mean_correlation: float, n_list: list, estimator = None
 
     return mse_df
 
-
-
-def plot_mse_test():
-    # Use the n values to set the ticks
-    # Create the scatter plot
-    plt.style.use('seaborn-v0_8')
-    plt.scatter(mse_ols['n'], mse_ols['MSE Test'], alpha=0.5, color='red', label='OLS')
-    plt.scatter(mse_t['n'], mse_t['MSE Test'], alpha=0.5, color='green', label='T-Learner')
-    plt.scatter(mse_cf_dml['n'], mse_cf_dml['MSE Test'], alpha=0.5, color='blue', label='Causal Forest DML')
-    plt.scatter(mse_x['n'], mse_x['MSE Test'], alpha=0.5, color='purple', label='X-Learner')
-    plt.scatter(mse_grf['n'], mse_grf['MSE Test'], alpha=0.5, color='grey', label='Generalized Random Forest')
-
-
-    # Set the x-ticks and y-ticks
-    #plt.xticks([])
-    # Set labels and legend
-    plt.xlabel('No. of Observations')
-    plt.ylabel('MSE Test')
-    plt.title('p = 20')
-    plt.legend()
-
-    # Show the plot
-    plt.show()

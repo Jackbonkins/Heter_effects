@@ -75,7 +75,7 @@ def TLearner_estimator(Y_train: pd.DataFrame, T_train: pd.DataFrame, X_train: pd
     true_cate_test = true_cate_test['CATE'].to_numpy()
     true_cate_train = true_cate_train['CATE'].to_numpy()
 
-    est_t = TLearner(models=RandomForestRegressor())
+    est_t = TLearner(models=RandomForestRegressor(n_estimators=1000))
     est_t.fit(Y=Y_train, T=T_train, X=X_train)
 
     estimated_cate_t_train = est_t.effect(X_train)
@@ -131,7 +131,7 @@ def XLearner_estimator(Y_train: pd.DataFrame, T_train: pd.DataFrame, X_train: pd
     true_cate_test = true_cate_test['CATE'].to_numpy()
     true_cate_train = true_cate_train['CATE'].to_numpy()
 
-    est_xlearner = XLearner(models=RandomForestRegressor(),
+    est_xlearner = XLearner(models=RandomForestRegressor(n_estimators=1000),
                 propensity_model=DummyClassifier())
     
     est_xlearner.fit(Y=Y_train, T=T_train, X=X_train)

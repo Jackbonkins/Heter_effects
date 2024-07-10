@@ -91,7 +91,7 @@ class SimulationStudy:
                             break
                     
 
-                    cov_matrix[i, j] = cov_matrix[j, i] = correlation *  np.sqrt(variance_diagonal[i] * variance_diagonal[j])
+                    cov_matrix[i, j] = cov_matrix[j, i] = correlation #*  np.sqrt(variance_diagonal[i] * variance_diagonal[j])
                             
             #Test covariance matrix for symmetry and positive-definiteness
             pos_def_test = np.linalg.cholesky(cov_matrix) 
@@ -146,6 +146,7 @@ class SimulationStudy:
         feat_cate = df[columns]
         np.random.seed(42) #Set seed to make sure that the weights are reproducible for consistent results
         weights = np.random.choice(range(1, self.no_feat_cate + 1), size=self.no_feat_cate, replace=False)
+        #print(weights)
         #weighted_feat = feat_cate*weights
 
 
@@ -228,7 +229,7 @@ class SimulationStudy:
 
 
 
-    def gen_non_par_model(self, df: pd.DataFrame) -> pd.DataFrame:
+    def gen_interactive_model(self, df: pd.DataFrame) -> pd.DataFrame:
                 #Generate treatment assignment
         df['T'] = np.random.binomial(1, 0.5, len(df)).astype(int)
       

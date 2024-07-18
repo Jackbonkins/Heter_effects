@@ -4,6 +4,7 @@ import scipy.stats as ss
 from sklearn.preprocessing import PolynomialFeatures 
 import math
 import warnings
+from sklearn.preprocessing import StandardScaler
 
 class SimulationStudy:
 
@@ -115,29 +116,61 @@ class SimulationStudy:
         warnings.filterwarnings("ignore", category=RuntimeWarning) 
         rng = np.random.default_rng()
         multivariate_samples = rng.multivariate_normal(mean, cov_matrix, self.n, tol=1e-6)
-
-        df_original = pd.DataFrame(multivariate_samples, columns=[f"X{i}" for i in range(self.p)])
+        df_original = pd.DataFrame(multivariate_samples, columns=[f"X{i}" for i in range(self.p)]) 
+        scaler = StandardScaler()
+        df_scaled = pd.DataFrame(scaler.fit_transform(multivariate_samples), columns=[f"X{i}" for i in range(self.p)])
             
-        return df_original
+        return df_scaled
 
 
 
 
 
+    #def gen_mu_x(self, df: pd.DataFrame) -> pd.DataFrame:
+
+    #    feat_no = self.p
+     #   columns = [f"X{i}" for i in range(feat_no)]
+    #    
+    #    poly = PolynomialFeatures(interaction_only=True)
+    #    poly_features = poly.fit_transform(df[columns].to_numpy())
+    #    interaction_sum = np.sum(poly_features, axis=1) - np.sum(df[columns].to_numpy(), axis=1)
+
+    #    df['mu_x'] =  interaction_sum #+ df[]
+
+    #   return df
+    
     def gen_mu_x(self, df: pd.DataFrame) -> pd.DataFrame:
-
-        feat_no = self.no_feat_cate
+        feat_no = (self.no_feat_cate)*2  # Halve the2 feat_no
         columns = [f"X{i}" for i in range(feat_no)]
         
+        # Split the columns into two halves based on halved feat_no
+        #first_half_columns = columns[:feat_no]
+        #second_half_columns = columns[feat_no:feat_no * 2]
+        
+        # Apply PolynomialFeatures to the first half
         poly = PolynomialFeatures(interaction_only=True)
         poly_features = poly.fit_transform(df[columns].to_numpy())
-        interaction_sum = np.sum(poly_features, axis=1) - np.sum(df[columns].to_numpy(), axis=1)
+        interaction_sum = np.sum(poly_features, axis=1) # np.sum(df[columns].to_numpy(), axis=1)
+        
+        # Calculate the simple sum for the second half
+        #simple_sum = np.sum(df[first_half_columns].to_numpy(), axis=1)
+        df['mu_x'] = interaction_sum
+        # Combine the interaction sum and simple sum
 
-        df['mu_x'] =  interaction_sum
+       # columns = [f"X{i}" for i in range(self.no_feat_cate)]
+
+        #feat_cate = df[columns]
+        #print(weights)
+        #weighted_feat = feat_cate*weights
+
+        #sq_feat = np.square(feat_cate.to_numpy())
+        #quad_sum = np.sum(sq_feat, axis=1).reshape(-1,1)
+        #df['mu_x'] = 
 
         return df
-    
 
+
+    
 
 
     def gen_cate(self, df: pd.DataFrame, non_linear=None) -> pd.DataFrame:
@@ -155,15 +188,6 @@ class SimulationStudy:
             quad_sum = np.sum(sq_feat*weights, axis=1).reshape(-1,1)
             df['CATE'] = quad_sum
 
-        elif non_linear == 'complex':
-            weighted_feat = feat_cate*weights
-            feat_sin = np.sin(weighted_feat.iloc[:, :1].to_numpy())
-            weighted_feat_sum = np.sum(feat_sin, axis=1).reshape(-1,1)
-            
-            sq_feat = np.square(feat_cate.iloc[:, 2:].to_numpy())
-            quad_sum = np.sum(sq_feat*weights[2:], axis=1).reshape(-1,1)
-            df['CATE'] = weighted_feat_sum + quad_sum
-
         else:
             #print('linear')
             lin_cate = np.sum(feat_cate.to_numpy()*weights, axis=1)
@@ -173,51 +197,10 @@ class SimulationStudy:
         return df
 
 
-    #def gen_cate(self, df: pd.DataFrame, geom: bool = False) -> pd.DataFrame: 
-
-        #Choose number of features that will be used for the CATE function    
-     #   feat_no = math.ceil(self.p/3)
-      #  columns = [f"X{i}" for i in range(feat_no)]
-
-       # if geom==True:
-            
-        #    middle = math.ceil(len(columns)/2)
-         #   first_half = columns[:middle]
-          #  second_half = columns[middle:]
-            
-            #weights = (np.random.randint(0, 4, size=(len(first_half))))
-            #weighted_feat = np.outer(weights, df[first_half].to_numpy())
-
-
-           # feature_sum = np.sum(df[second_half].to_numpy(), axis=1)
-            #weighted_feat_sum = np.sum(weighted_feat, axis=1)
-            #cate_sin = np.sin(weighted_feat_sum)
-            #cate_sin = np.sin(np.sum(df[first_half].to_numpy(), axis=1))
-            #df['CATE'] = cate_sin + feature_sum
-
-        #else:
-            #poly = PolynomialFeatures(poly_degree, include_bias=False)
-            #interactions = PolynomialFeatures(interaction_only=True, include_bias=False)
-
-            #poly_features = poly.fit_transform(df[columns].to_numpy())
-            #interaction_features = interactions.fit_transform(df[columns].to_numpy())
-
-            # Sum polynomial features and subtract redundant values      
-            #sum_poly_features = np.sum(poly_features, axis=1) - np.sum(interaction_features, axis=1) - np.sum(df[columns].to_numpy(), axis=1)
-
-            #df['CATE'] = sum_poly_features + np.random.normal(0, 1, self.n)
-
-        #else:
-         #   pass
-            #df['CATE'] = 
-            
-
-        #return df
 
 
 
-
-    def gen_semi_par_model(self, df: pd.DataFrame) -> pd.DataFrame:
+    def gen_outcome(self, df: pd.DataFrame) -> pd.DataFrame:
         
         #Generate treatment assignment
         df['T'] = np.random.binomial(1, 0.5, len(df)).astype(int)
@@ -229,24 +212,13 @@ class SimulationStudy:
 
 
 
-    def gen_interactive_model(self, df: pd.DataFrame) -> pd.DataFrame:
-                #Generate treatment assignment
-        df['T'] = np.random.binomial(1, 0.5, len(df)).astype(int)
-      
-        #Generate outcome y
-        df['y'] = df['CATE']*df['T'] + np.random.normal(0, 1, self.n)
-        return df
-
-
-
-
     def create_dataset(self):
 
         cov_matrix, mean = self.get_covariance_matrix()
         df = self.get_features(cov_matrix=cov_matrix, mean=mean)
         df_mu_x = self.gen_mu_x(df=df)
         df_cate = self.gen_cate(df=df_mu_x, non_linear=self.non_linear)
-        final_df = self.gen_semi_par_model(df_cate)
+        final_df = self.gen_outcome(df_cate)
 
         return final_df
 

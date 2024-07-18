@@ -4,6 +4,7 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression
 from econml.metalearners import TLearner
 from econml.dml import CausalForestDML
+from econml.dml import DML
 from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
@@ -75,7 +76,7 @@ def TLearner_estimator(Y_train: pd.DataFrame, T_train: pd.DataFrame, X_train: pd
     true_cate_test = true_cate_test['CATE'].to_numpy()
     true_cate_train = true_cate_train['CATE'].to_numpy()
 
-    est_t = TLearner(models=RandomForestRegressor(n_estimators=1000, random_state=42))
+    est_t = TLearner(models=RandomForestRegressor(n_estimators=1000))
     est_t.fit(Y=Y_train, T=T_train, X=X_train)
 
     estimated_cate_t_train = est_t.effect(X_train)
@@ -97,9 +98,9 @@ def HRF(Y_train: pd.DataFrame, T_train: pd.DataFrame, X_train: pd.DataFrame, X_t
     true_cate_test = true_cate_test['CATE'].to_numpy()
     true_cate_train = true_cate_train['CATE'].to_numpy()
 
-    est_hrf = RegressionForest(n_estimators=1000, random_state=42)
+    est_hrf = RegressionForest(n_estimators=1000)
     est_hrf.fit(y=Y_train, X=X_train)
-    lb, ub = est_hrf.predict_interval(X_test)
+    lb, ub = est_hrf.predict_interval(X_test, alpha=0.05)
     ci_bounds = np.column_stack((lb, ub, true_cate_test))
 
     estimated_cate_hrf_train = est_hrf.predict(X_train)
@@ -130,7 +131,7 @@ def CF_DML(Y_train: pd.DataFrame, T_train: pd.DataFrame, X_train: pd.DataFrame, 
                         discrete_treatment=True,
                         n_estimators=1000,
                         cv=5,
-                        random_state=42,
+                        #random_state=42,
                         criterion='mse',
                         honest=True)
 
@@ -139,7 +140,7 @@ def CF_DML(Y_train: pd.DataFrame, T_train: pd.DataFrame, X_train: pd.DataFrame, 
     estimated_cate_cfdml_train = est_cfdml.effect(X_train)
     estimated_cate_cfdml_test = est_cfdml.effect(X_test)
 
-    lb, ub = est_cfdml.effect_interval(X_test)
+    lb, ub = est_cfdml.effect_interval(X_test, alpha=0.05)
     ci_bounds = np.column_stack((lb, ub, true_cate_test))
 
     CFDML_MSE_train = mean_squared_error(true_cate_train, estimated_cate_cfdml_train)
@@ -160,11 +161,11 @@ def GRF_estimator(Y_train: pd.DataFrame, T_train: pd.DataFrame, X_train: pd.Data
     true_cate_train = true_cate_train['CATE'].to_numpy()
 
 
-    est_grf = CausalForest(random_state=42, n_estimators=1000)
+    est_grf = CausalForest(n_estimators=1000)
     
     est_grf.fit(y=Y_train, T=T_train, X=X_train)
 
-    lb, ub = est_grf.predict_interval(X_test)
+    lb, ub = est_grf.predict_interval(X_test, alpha=0.05)
     ci_bounds = np.column_stack((lb, ub, true_cate_test))
 
     estimated_cate_grf_train = est_grf.predict(X_train)

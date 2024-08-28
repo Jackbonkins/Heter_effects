@@ -49,7 +49,7 @@ class SimulationStudy:
 
     #def __init__(self, p: int, mean_correlation: float, cor_variance: float, n: int, geom: bool = False) -> pd.DataFrame:
     def __init__(self, p: int, mean_correlation: float, cor_variance: float, 
-                 n: int, no_feat_cate: int, non_linear=None) -> pd.DataFrame:
+                 n: int, no_feat_cate: int, non_linear=None, seed=None) -> pd.DataFrame:
         
         self.p = p
         self.mean_correlation = mean_correlation
@@ -57,6 +57,7 @@ class SimulationStudy:
         self.n = n
         self.no_feat_cate = no_feat_cate
         self.non_linear = non_linear
+        self.seed = seed
 
 
 
@@ -74,6 +75,7 @@ class SimulationStudy:
         variance_diagonal = np.ones(self.p) 
         cov_matrix = np.zeros((self.p, self.p))
 
+
         # assign variance to diagonal
         try:
             for i in range(self.p): #columns
@@ -81,24 +83,25 @@ class SimulationStudy:
 
                 for j in range(i+1, self.p):
 
-                    correlation = np.clip(np.random.normal(self.mean_correlation, self.cor_variance), -0.95, 0.95)
+                    correlation = np.clip(np.random.normal(self.mean_correlation, self.cor_variance), -1, 1)
 
                     while True: 
-                        if math.isclose(correlation, 0.95, rel_tol=1e-8) or math.isclose(correlation, -0.95, rel_tol=1e-8):
-                            correlation = np.clip(np.random.normal(self.mean_correlation, self.cor_variance), -0.95, 0.95)
-                            #print(correlation)
+                        if math.isclose(correlation, 1, rel_tol=1e-20) or math.isclose(correlation, -1, rel_tol=1e-20):
+                            correlation = np.clip(np.random.normal(self.mean_correlation, self.cor_variance), -1, 1)
                             continue
-                        else:          
+                        else:
+                            #print(f'Correlation was 1, now: {correlation}') 
                             break
                     
 
                     cov_matrix[i, j] = cov_matrix[j, i] = correlation #*  np.sqrt(variance_diagonal[i] * variance_diagonal[j])
-                            
+                    #print(cov_matrix)        
             #Test covariance matrix for symmetry and positive-definiteness
             pos_def_test = np.linalg.cholesky(cov_matrix) 
 
         except np.linalg.LinAlgError:
             pass
+
 
         return cov_matrix, mean
         
@@ -111,16 +114,26 @@ class SimulationStudy:
         Uses self parameter, the covariance matrix, and the mean matrix to draw p features from a multivariate normal distribution with n observations. 
 
         Method returns a pandas dataframe.
+
+        Note that the StandardScaler modifies the correlation matrix by scaling it down. A post-standardization correction is then made to ensure that the original covariance-variance matrix is valid.
        
         '''
-        warnings.filterwarnings("ignore", category=RuntimeWarning) 
-        rng = np.random.default_rng()
+        warnings.filterwarnings("ignore", category=RuntimeWarning)
+        rng = np.random.default_rng(self.seed)
         multivariate_samples = rng.multivariate_normal(mean, cov_matrix, self.n, tol=1e-6)
         df_original = pd.DataFrame(multivariate_samples, columns=[f"X{i}" for i in range(self.p)]) 
+
         scaler = StandardScaler()
         df_scaled = pd.DataFrame(scaler.fit_transform(multivariate_samples), columns=[f"X{i}" for i in range(self.p)])
-            
-        return df_scaled
+
+        original_corr = df_original.corr()
+        chol_decomp = np.linalg.cholesky(original_corr)
+        adjusted_samples = df_scaled.values @ chol_decomp.T
+       
+        final_scaler = StandardScaler(with_mean=False)
+        df_final = pd.DataFrame(final_scaler.fit_transform(adjusted_samples), columns=[f"X{i}" for i in range(self.p)])
+        #return df_scaled
+        return df_final
 
 
 
@@ -177,19 +190,22 @@ class SimulationStudy:
         columns = [f"X{i}" for i in range(self.no_feat_cate)]
 
         feat_cate = df[columns]
-        np.random.seed(42) #Set seed to make sure that the weights are reproducible for consistent results
+        np.random.seed(220924) #Set seed to make sure that the weights are reproducible for consistent results
         weights = np.random.choice(range(1, self.no_feat_cate + 1), size=self.no_feat_cate, replace=False)
+        #print(weights)
+        
         #print(weights)
         #weighted_feat = feat_cate*weights
 
 
         if non_linear == 'quadratic':
+
             sq_feat = np.square(feat_cate.to_numpy())
             quad_sum = np.sum(sq_feat*weights, axis=1).reshape(-1,1)
             df['CATE'] = quad_sum
 
+
         else:
-            #print('linear')
             lin_cate = np.sum(feat_cate.to_numpy()*weights, axis=1)
             df['CATE'] = lin_cate
 
@@ -221,5 +237,3 @@ class SimulationStudy:
         final_df = self.gen_outcome(df_cate)
 
         return final_df
-
- 

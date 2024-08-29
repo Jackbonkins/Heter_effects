@@ -5,77 +5,68 @@ from econml.grf import CausalForest
 import matplotlib
 import matplotlib.pyplot as plt
 plt.style.use('seaborn-v0_8-colorblind')
-matplotlib.rcParams.update({
-    "pgf.texsystem": "pdflatex",
-    'font.family': 'Times New Roman',
-    'font.size' : 12,
+matplotlib.use("pgf")
+plt.rcParams.update({
+    'pgf.texsystem': 'lualatex',  
+    'font.size': 12,
     'text.usetex': True,
+    'font.family': 'serif',
+    'font.serif': 'Times New Roman',
     'pgf.rcfonts': False,
-    })
+    'pgf.preamble': r'\usepackage{fontspec} \setmainfont{Times New Roman}',
+})
+
+
 
 def get_important_feats(X_test, feat_importance):
     important_feats = X_test.columns[np.argsort(feat_importance)[::-1]]
     return important_feats
 
 
+
+
 def partial_dependence_plots(X_test, important_feats, est):
 
-    plt.figure(figsize=(10, 7))
-    for it, feature in enumerate(important_feats[:4]):
-        plt.subplot(2, 2, it + 1)
-
+    fig, axes = plt.subplots(1, 3, figsize=(12, 5))
+    
+    for it, feature in enumerate(important_feats[:3]):
+        ax = axes[it]
+        
         grid = np.unique(np.percentile(X_test[feature], np.arange(0, 105, 5)))
         Zpd = pd.DataFrame(np.tile(np.median(X_test, axis=0, keepdims=True), (len(grid), 1)),
                         columns=X_test.columns)
 
         Zpd[feature] = grid
 
-        #Zpd = pd.DataFrame(np.tile(np.median(X_test, axis=0, keepdims=True), (len(X_test), 1)),
-         #               columns=X_test.columns)
-        
-
         if isinstance(est, CausalForestDML):            
-            preds=est.effect(Zpd)
+            preds = est.effect(Zpd)
             lb, ub = est.effect_interval(Zpd)
             lb = lb.flatten()
             ub = ub.flatten()
             preds = preds.flatten()
-
-            plt.errorbar(Zpd[feature], preds, yerr=(preds - lb, ub - preds), fmt="r--o", ecolor = "black", elinewidth=0.75)
+            est_name = 'CFDML'
+            ax.errorbar(Zpd[feature], preds, yerr=(preds - lb, ub - preds), fmt="r--o", ecolor="black", elinewidth=0.75)
 
         elif isinstance(est, CausalForest):
-            preds, lb, ub = est.predict(Zpd, interval = True, alpha= 0.05)
+            preds, lb, ub = est.predict(Zpd, interval=True, alpha=0.05)
             lb = lb.flatten()
             ub = ub.flatten()
             preds = preds.flatten()
-
-            plt.errorbar(Zpd[feature], preds, yerr=(preds - lb, ub - preds), fmt="r--o", ecolor = "black", elinewidth=0.75)
+            est_name = 'GRF'
+            ax.errorbar(Zpd[feature], preds, yerr=(preds - lb, ub - preds), fmt="r--o", ecolor="black", elinewidth=0.75)
 
         else:
-            preds=est.predict(Zpd)
+            preds = est.effect(Zpd)
             preds = preds.flatten()
-            plt.errorbar(Zpd[feature], preds, fmt="r--o", ecolor = "black", elinewidth=0.5)
-        #plt.fill_between(Zpd[feature], preds - lb, preds + ub, color='lightblue', alpha=0.5, label='95% CI')
+            est_name = 'T_Learner'
+            ax.errorbar(Zpd[feature], preds, fmt="r--o", ecolor="black", elinewidth=0.5)
 
+        ax.plot(Zpd[feature], preds, color='red')
+        ax.set_xlabel(feature)
+    
+    # Set a common y-label
+    fig.text(0.04, 0.5, 'Predicted CATE', va='center', ha='center', rotation='vertical')
 
-        plt.plot(Zpd[feature], preds, color='red', label='Predicted CATE')
-        plt.xlabel(feature)
-        plt.ylabel('Predicted CATE')
-    plt.tight_layout()
-    plt.savefig(f'cf-marginal-plots.png', dpi=600)
-    plt.show()
+    plt.tight_layout(rect=[0.05, 0, 1, 1])  # Adjust layout to make room for the y-label
 
-
-#sim: SimulationStudy = SimulationStudy(p=35, mean_correlation=0.5, cor_variance=0.2, n=1500, no_feat_cate=3, non_linear='linear')
-#simulation_linear = sim.create_dataset()
-#train_df_linear, test_df_linear, X_train_linear, Y_train_linear, T_train_linear, X_test_linear, T_test_linear, y_test_linear, true_cate_train_linear, true_cate_test_linear = get_split(simulation_linear)
-
-#estimated_cate_train, estimated_cate_test, ci_bounds, RMSE_test, RMSE_train = method.CF_DML(Y_train_linear, T_train_linear, X_train_linear, 
-                                                                                            #X_test_linear, true_cate_train_linear, true_cate_test_linear)
-
-
-
-
-#sim: SimulationStudy = SimulationStudy(p=35, mean_correlation=0.5, cor_variance=0.2, n=1500, no_feat_cate=3, non_linear='quadratic')
-#simulation_quad = sim.create_dataset()
-#train_df_quad, test_df_quad, X_train_quad, Y_train_quad, T_train_quad, X_test_quad, T_test_quad, y_test_quad, true_cate_train_quad, true_cate_test_quad = get_split(simulation_quad)
+    plt.savefig(fname=f'Feature_imp_{est_name}', bbox_inches='tight')

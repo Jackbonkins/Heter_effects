@@ -1,5 +1,5 @@
 --------------------------------------
-Files overview:
+Main files overview:
 --------------------------------------
 Data Generation &rarr; Gen_data.py 
 

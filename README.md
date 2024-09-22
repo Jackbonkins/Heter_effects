@@ -1,5 +1,5 @@
 --------------------------------------
-Main files overview:
+Files overview:
 -------------------------------------- 
 
 To reproduce the files of the paper, only **.ipynb** have to be executed. The **.py** scripts are mostly functions and methods that are then used in the jupyter notebooks.

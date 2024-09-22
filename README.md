@@ -7,6 +7,8 @@ To reproduce the files of the paper, only **.ipynb** have to be executed. The **
 The RMSE Files folder includes the .pkl files to replicate the main RMSE figures in the thesis. 
 
 --------------------------------------
+File | Description
+Gen_data.py | Module used to generate the simulated data sets
 
 Data Generation &rarr; Gen_data.py 
 

@@ -1,6 +1,8 @@
 --------------------------------------
 Main files overview:
 --------------------------------------
+Only the .ipynb files are required to get the figures/tables from the paper
+
 Data Generation &rarr; Gen_data.py 
 
 Descriptive Statistics &rarr; Descriptive.ipynb, Graph_feat.py

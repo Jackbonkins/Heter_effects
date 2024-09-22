@@ -1,7 +1,7 @@
 --------------------------------------
 Main files overview:
 --------------------------------------
-Only the **.ipynb** files are required to get the figures/tables from the paper
+Only executing the **.ipynb** files are required to get the figures/tables from the paper.
 
 Data Generation &rarr; Gen_data.py 
 

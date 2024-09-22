@@ -8,7 +8,7 @@ The RMSE Files folder includes the .pkl files to replicate the main RMSE figures
 
 --------------------------------------
 | File | Description |
-| ---- | ----------- |
+| :---- | :-------- |
 |Gen_data.py | Module used to generate the data |
 |Graph_feat.py | Set functions to plot the descriptive statistics.|
 |Descriptive.ipynb | Jupyter notebook that generates Figures 1, 2, B.1, B.2, and B.3, as well as Tables 1 and 2.|

@@ -1,7 +1,9 @@
 --------------------------------------
 Main files overview:
---------------------------------------
-Only executing the **.ipynb** files are required to get the figures/tables from the paper.
+-------------------------------------- 
+Only executing the **.ipynb** files are required to get the figures/tables from the paper. The **.py** scripts are mostly functions and methods that are then used in the jupyter notebooks.
+
+The RMSE Files folder includes the .pkl files to replicate the main RMSE figures in the thesis. 
 
 Data Generation &rarr; Gen_data.py 
 

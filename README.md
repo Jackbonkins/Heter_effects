@@ -2,8 +2,9 @@
 Description
 -----------------------------------
 The repository includes files used for my master thesis titled "_Estimating Heterogeneous Treatment Effects in Randomized Controlled Trials: A Comparison of OLS and
-Machine Learning Techniques_" at the Johannes Gutenberg University Mainz. The goal of the study was to compare how standard interactive linear regressions and machine learning techniques perform when estimating conditional average treatment effects (CATE) in randomized controlled trials of varied data complexity. Next to typical simulation parameters such as sample size and number of features, I also studied how complexity increases in terms of feature correlation in the DGP alters the performance of the selected estimators. I used a "naive practitioner" approach to select the OLS interactions where all features in the data were interacted with the treatment indicator.
+Machine Learning Techniques_" at the Johannes Gutenberg University Mainz. The goal of the study was to compare how standard interactive linear regressions and machine learning techniques perform when estimating conditional average treatment effects (CATE) in randomized controlled trials of varied data complexity. Next to typical simulation parameters such as sample size and number of features, I also studied how complexity increases in terms of feature correlation in the DGP alters the performance of the selected estimators. 
 
+I used a "naive practitioner" approach to select the OLS interactions where all features in the data were interacted with the treatment indicator. The ML methods were the Two(T)-Learner, a Generalized Random Forest, and a R-Learner where Random Forests where used to predict the nuisance functions and then the residualized outcomes were fitted with a Generalized Random Forest.
 
 
 --------------------------------------

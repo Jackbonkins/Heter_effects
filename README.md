@@ -2,7 +2,7 @@
 Description
 -----------------------------------
 The repository includes files used for my master thesis titled "_Estimating Heterogeneous Treatment Effects in Randomized Controlled Trials: A Comparison of OLS and
-Machine Learning Techniques_" at the Johannes Gutenberg University of Mainz.
+Machine Learning Techniques_" at the Johannes Gutenberg University Mainz. The goal of the study was to compare how standard interactive linear regressions and machine learning techniques perform when estimating conditional average treatment effects (CATE) in randomized controlled trials of varied complexities.
 
 
 

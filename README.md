@@ -1,3 +1,11 @@
+-----------------------------------
+Description
+-----------------------------------
+The repository includes files used for my master thesis titled "_Estimating Heterogeneous Treatment Effects in Randomized Controlled Trials: A Comparison of OLS and
+Machine Learning Techniques_" at the Johannes Gutenberg University of Mainz.
+
+
+
 --------------------------------------
 Files overview:
 -------------------------------------- 
